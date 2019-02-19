@@ -75,24 +75,27 @@ int main() {
                (OS_STK *)&lidarStk[LIDAR_STK_SIZE - 1],
                LIDAR_PRIO);
 
-  
-  printf("\nWriting data to the sd card \n");
-   FILE *fp = fopen("/sd/hello.txt", "w");
-   if (fp == NULL) {
-       pc.printf("Unable to write the file \n");
-   } else {
-       fprintf(fp, "mbed SDCard application!");
-       fclose(fp);
-       pc.printf("File successfully written! \n");
-   }
 
-  printf("\nReading data from the SD card. \n");
-   fp = fopen("/sd/hello.txt", "r");
-   if (fp != NULL) {
-       int size = fread(buffer, sizeof(char), 1024, fp);
-       pc.printf("Number of data read: %d, text from hello.txt file: %s \n", size, buffer);
-       fclose(fp);
-   }
+	
+  
+  	printf("\nWriting data to the sd card \n");
+   	FILE *fp = fopen("/sd/hello.bin", "wb"); // w for write, b for binary
+  	 if (fp == NULL) {
+       pc.printf("Unable to write the file \n");
+   	} 	else {
+				//fprintf(fp, "00101010 00101011 11010010 11101010 00101010");
+       	fprintf(fp, "00101010 00101011 11010010 11101010 00101010");
+       	fclose(fp);
+       	pc.printf("File successfully written! \n");
+   	}
+
+  	printf("\nReading data from the SD card. \n");
+   	fp = fopen("/sd/hello.bin", "rb"); // r for read, b for binary
+   	if (fp != NULL) {
+       	int size = fread(buffer, sizeof(char), 1024, fp);
+       	pc.printf("Number of data read: %d, text from hello.bin file: %s \n", size, buffer);
+       	fclose(fp);
+   	}
 
   /* Start the OS */
   OSStart();                                                  
@@ -117,7 +120,7 @@ static void appTaskLidar(void *pdata) {
 
   /* Task main loop */
   while (true) {
-    pc.printf("appTaskLidar Running!\n");
+    //pc.printf("appTaskLidar Running!\n");
 		//if(device.readable()) {
 			//pc.putc(device.getc());
 	//}
