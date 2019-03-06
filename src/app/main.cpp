@@ -127,6 +127,13 @@ static void appTaskLidar(void *pdata) {
   /* Start the OS ticker -- must be done in the highest priority task */
   SysTick_Config(SystemCoreClock / OS_TICKS_PER_SEC);
   //dtr = 1;
+  M1_DIR = 0;
+  M2_DIR = 1;
+  M3_DIR = 0;
+
+  M1_SPD = 0.0f;
+  M2_SPD = 0.0f;
+  M3_SPD = 0;
 
 	//device.puts(startRequest);
 
