@@ -52,6 +52,18 @@ Serial device(D1, D0, 115200);
 DigitalOut dtr(D7);
 DigitalOut redLed(LED1);
 
+/* MOTOR DRIVER SHIELD */
+DigitalOut  M1_DIR(D4);
+PwmOut      M1_SPD(D3);
+
+DigitalOut  M2_DIR(D12);
+PwmOut      M2_SPD(D11);
+
+DigitalOut  M3_DIR(D8);
+PwmOut      M3_SPD(D5);
+
+
+
 char startRequest[] = {0xA5, 0x20};
 char expressScanRequest[] = {0xA5, 0x82, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22};
 char resetRequest[] = {0xA5, 0x40};
