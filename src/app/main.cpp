@@ -69,11 +69,22 @@ char expressScanRequest[] = {0xA5, 0x82, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2
 char resetRequest[] = {0xA5, 0x40};
 char stopRequest[] = {0xA5, 0x25};
 
+// ??
+const char *bit_rep[16] = {
+    [ 0] = "0000", [ 1] = "0001", [ 2] = "0010", [ 3] = "0011",
+    [ 4] = "0100", [ 5] = "0101", [ 6] = "0110", [ 7] = "0111",
+    [ 8] = "1000", [ 9] = "1001", [10] = "1010", [11] = "1011",
+    [12] = "1100", [13] = "1101", [14] = "1110", [15] = "1111",
+};
+static void print_byte(uint8_t byte);
+
 /* TEMP HACK FOR MOVEMENT DEMONSTRATION */
 static void goForward(void);
 static void goBackward(void);
 static void goLeft(void);
 static void goRight(void);
+
+
 
 
 /*
@@ -110,21 +121,28 @@ static void appTaskLidar(void *pdata) {
   
   /* Start the OS ticker -- must be done in the highest priority task */
   SysTick_Config(SystemCoreClock / OS_TICKS_PER_SEC);
-  //dtr = 1;
+  dtr = 1;
+  device.puts(startRequest);
 	
 
   /* Task main loop */
   while (true) {
-    goForward();
+    
+    for(int i = 0; i < 5; i++) {
+      print_byte(device.getc()); 
+    }
+    printf("\n");
+    /*goForward();
     OSTimeDlyHMSM(0,0,1,0);
     goBackward();
     OSTimeDlyHMSM(0,0,1,0);
     goLeft();
     OSTimeDlyHMSM(0,0,1,0);
     goRight();
-    OSTimeDlyHMSM(0,0,1,0);
+    OSTimeDlyHMSM(0,0,1,0);*/
 
-    //pc.printf("hello!");
+    //pc.putc(device.getc());
+    //print_byte(device.getc());
     //OSTimeDlyHMSM(0,0,1,0);
   }
 }
@@ -171,5 +189,9 @@ static void goRight() {
   M1_SPD = 0.5f;
   M2_SPD = 0.25f;
   M3_SPD = 0.25f;
+}
+
+void print_byte(uint8_t byte) {
+    printf("%s%s", bit_rep[byte >> 4], bit_rep[byte & 0x0F]);
 }
 
