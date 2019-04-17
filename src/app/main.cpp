@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <ucos_ii.h>
 #include <mbed.h>
+#include <fstream>
+#include <string>
 #include <SDFileSystem.h>
 #include "BufferedSerial.h"
 #include "rplidar.h"
@@ -68,6 +70,10 @@ PwmOut      M2_SPD(D11);
 DigitalOut  M3_DIR(D8);
 PwmOut      M3_SPD(D5);
 
+static void beginScanning(void);
+static void stopScanning(void);
+static void saveReadings(void);
+
 /* TEMP HACK FOR MOVEMENT DEMONSTRATION */
 static void goForward(void);
 static void goBackward(void);
@@ -108,16 +114,16 @@ static void appTaskLidar(void *pdata) {
   
   /* Start the OS ticker -- must be done in the highest priority task */
   SysTick_Config(SystemCoreClock / OS_TICKS_PER_SEC);
-  dtr = 1;
-  lidar.begin(lidar_device);
-  lidar.startScan();
+  dtr = 0;
+
   //lidar.getHealth(deviceHealthInfo);
   //pc.printf("hello");
   //pc.printf(deviceHealthInfo.status + "\n");
   //pc.printf(deviceHealthInfo.error_code + "\n");
 
   /* Task main loop */
-  //pc.printf("\n");
+  
+  saveReadings();
   while (true) {
     lidar.waitPoint();
     measurement = lidar.getCurrentPoint();
@@ -125,6 +131,8 @@ static void appTaskLidar(void *pdata) {
     pc.printf("%f \n", measurement.angle);
     pc.printf("DISTANCE: ");
     pc.printf("%f \n", measurement.distance);
+		M1_SPD = 0.0f;
+		M2_SPD = 0.5f;
 
     /*
     printf("\n");
@@ -142,6 +150,39 @@ static void appTaskLidar(void *pdata) {
     OSTimeDlyHMSM(0,0,0,2);
   }
 }
+
+
+static void beginScanning() {
+  lidar.begin(lidar_device);
+  lidar.startScan();
+}
+
+static void stopScanning() {
+
+
+}
+
+static void saveReadings() {
+  printf("\nWriting data to the sd card \n");
+   	FILE *fp = fopen("/sd/hello.txt", "w"); // w for write, b for binary
+  	 if (fp == NULL) {
+       pc.printf("Unable to write the file \n");
+   	} 	else {
+				//fprintf(fp, "00101010 00101011 11010010 11101010 00101010");
+       	fprintf(fp, "Hello world, this is a test!");
+       	fclose(fp);
+       	pc.printf("File successfully written! \n");
+   	}
+
+  	/*printf("\nReading data from the SD card. \n");
+   	fp = fopen("/sd/hello.bin", "rb"); // r for read, b for binary
+   	if (fp != NULL) {
+       	int size = fread(buffer, sizeof(char), 1024, fp);
+       	pc.printf("Number of data read: %d, text from hello.bin file: %s \n", size, buffer);
+       	fclose(fp);
+   	}*/
+}
+
 
 
 
