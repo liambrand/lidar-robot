@@ -64,7 +64,7 @@ RPLidar lidar;
 DigitalOut dtr(D7);
 DigitalOut redLed(LED1);
 
-int readingsBuffer[4];
+float readingsBuffer[100][2];
 
 
 // Semaphores
@@ -164,13 +164,25 @@ static void appTaskMovement(void *pdata) {
 	}*/
 
   while (true) {
-		pc.printf("Moving...\n ");
-		OSTimeDlyHMSM(0,0,4,0); // how long it moves for
+		// First movement session
+		pc.printf("Moving - First...\n");
+		OSTimeDlyHMSM(0,0,6,0); // how long it moves for
 		pc.printf("Movement stopped.\n ");
 		status = OSSemPost(readyToScan);
 		OSSemPend(readyToScan, 0, &status);
-		OSTimeDlyHMSM(0,0,4,0);
 
+		// Second movement session
+		pc.printf("Moving - Second...\n ");
+		OSTimeDlyHMSM(0,0,6,0); // how long it moves for
+		pc.printf("Movement stopped.\n ");
+		status = OSSemPost(readyToScan);
+		OSSemPend(readyToScan, 0, &status);
+
+		// Stop moving and write data to file
+		status = OSSemPost(readyToWrite);
+		OSSemPend(readyToWrite, 0, &status);
+		
+		OSTimeDlyHMSM(0,0,0,5);
 
 		//pc.printf("Scanning... ");
 		//takeReadings();
@@ -192,25 +204,51 @@ static void appTaskMovement(void *pdata) {
 
 static void appTaskScan(void *pdata) {
 	uint8_t status;
-	int dummyBuffer[100];
+	// Have to half the calculated array size due to its 2 dimensional nature
+	int arraySize = (sizeof(readingsBuffer)/sizeof(float))/2;
 
 	while(true) {
 		OSSemPend(readyToScan, 0, &status);
-		pc.printf("Scanning...\n ");
-		// could put a delay in here
-		takeReadings();
+		pc.printf("Scanning...\n");
+		beginScanning();
+
+		for(int i = 0; i < arraySize; i++) {
+			lidar.waitPoint();
+  		measurement = lidar.getCurrentPoint();
+			//pc.printf("%d ", i);
+			// Get angle
+  		//pc.printf("ANGLE: ");
+  		//pc.printf("%f \n", measurement.angle);
+			readingsBuffer[i][0] = measurement.angle;
+
+			// Get distance
+  		//pc.printf("DISTANCE: ");
+  		//pc.printf("%f \n", measurement.distance);
+			readingsBuffer[i][1] = measurement.distance;
+		}
+		stopScanning();
 		pc.printf("Stopping scan.\n");
 		status = OSSemPost(readyToScan);
-		OSTimeDlyHMSM(0,0,5,0);
+		OSTimeDlyHMSM(0,0,0,5);
 	}
 }
 
 static void appTaskWrite(void *pdata) {
 	uint8_t status;
+	// Have to half the calculated array size due to its 2 dimensional nature
+	int arraySize = (sizeof(readingsBuffer)/sizeof(float))/2;
+
 	while(true) {
 		OSSemPend(readyToWrite, 0, &status);
+		for(int i = 0; i < arraySize; i++) {
+			pc.printf("ANGLE: %f", readingsBuffer[i][0]);
+			pc.printf("DISTANCE: %f", readingsBuffer[i][0]);
+		}
+
+		pc.printf("Writing readings to SD card...\n");
+		pc.printf("Done writing.\n");
 		status = OSSemPost(readyToWrite);
-		OSTimeDlyHMSM(0,0,10,0);
+		OSTimeDlyHMSM(0,0,0,5);
 	}
 }
 
@@ -222,10 +260,18 @@ static void beginScanning() {
 }
 
 static void takeReadings() {
-  
+  FILE *fp = fopen("/sd/readings.txt", "a"); // a for append
+  if (fp == NULL) {
+    pc.printf("Unable to access/create file \n");
+  }
+	//for(int i = 0; i < sizeof(readingsBuffer)/sizeof(int); i++) {
+	fprintf(fp, "File write test! \n");
+	//}
+	fclose(fp);
 }
 
 static void writeReadings() {
+	pc.printf("writeReadings()\n");
 	//lidar.waitPoint();
   //measurement = lidar.getCurrentPoint();
   /*pc.printf("ANGLE: ");
