@@ -15,7 +15,9 @@
 */
 
 typedef enum {
-  LIDAR_PRIO = 4
+  MOVEMENT_PRIO = 4,
+	SCAN_PRIO,
+	WRITE_PRIO
 } taskPriorities_t;
 
 /*
@@ -24,9 +26,13 @@ typedef enum {
 *********************************************************************************************************
 */
 
-#define  LIDAR_STK_SIZE              256
+#define  MOVEMENT_STK_SIZE              256
+#define  SCAN_STK_SIZE              		256
+#define  WRITE_STK_SIZE              		256
 
-static OS_STK lidarStk[LIDAR_STK_SIZE];
+static OS_STK movementStk[MOVEMENT_STK_SIZE];
+static OS_STK scanStk[SCAN_STK_SIZE];
+static OS_STK writeStk[WRITE_STK_SIZE];
 
 /*
 *********************************************************************************************************
@@ -34,7 +40,9 @@ static OS_STK lidarStk[LIDAR_STK_SIZE];
 *********************************************************************************************************
 */
 
-static void appTaskLidar(void *pdata);
+static void appTaskMovement(void *pdata);
+static void appTaskScan(void *pdata);
+static void appTaskWrite(void *pdata);
 
 /*
 *********************************************************************************************************
@@ -49,13 +57,20 @@ static void appTaskLidar(void *pdata);
 #define	DETECT	PTE6
 
 SDFileSystem sd(MOSI, MISO, SCLK, PTE4, "sd");
-char buffer[100];
 
 Serial pc(USBTX, USBRX);
 BufferedSerial lidar_device(D1, D0);
 RPLidar lidar;
 DigitalOut dtr(D7);
 DigitalOut redLed(LED1);
+
+int readingsBuffer[4];
+
+
+// Semaphores
+OS_EVENT *readyToScan;
+OS_EVENT *readyToWrite;
+
 
 struct _rplidar_response_device_health_t deviceHealthInfo;
 struct RPLidarMeasurement measurement;
@@ -72,7 +87,8 @@ PwmOut      M3_SPD(D5);
 
 static void beginScanning(void);
 static void stopScanning(void);
-static void saveReadings(void);
+static void takeReadings(void);
+static void writeReadings(void);
 
 /* TEMP HACK FOR MOVEMENT DEMONSTRATION */
 static void goForward(void);
@@ -91,11 +107,25 @@ int main() {
   /* Initialise the OS */
   OSInit();                                                   
 
+	/* Declare binary semaphores */
+	readyToScan = OSSemCreate(0);
+	readyToWrite = OSSemCreate(0);
+
   /* Create the tasks */
-  OSTaskCreate(appTaskLidar,                               
+  OSTaskCreate(appTaskMovement,                               
                (void *)0,
-               (OS_STK *)&lidarStk[LIDAR_STK_SIZE - 1],
-               LIDAR_PRIO);
+               (OS_STK *)&movementStk[MOVEMENT_STK_SIZE - 1],
+               MOVEMENT_PRIO);
+
+  OSTaskCreate(appTaskScan,                               
+               (void *)0,
+               (OS_STK *)&scanStk[SCAN_STK_SIZE - 1],
+               SCAN_PRIO);
+
+	OSTaskCreate(appTaskWrite,                               
+               (void *)0,
+               (OS_STK *)&writeStk[WRITE_STK_SIZE - 1],
+               WRITE_PRIO);
 
   /* Start the OS */
   OSStart();                                                  
@@ -110,11 +140,12 @@ int main() {
 *********************************************************************************************************
 */
 
-static void appTaskLidar(void *pdata) {
-  
+static void appTaskMovement(void *pdata) {
   /* Start the OS ticker -- must be done in the highest priority task */
   SysTick_Config(SystemCoreClock / OS_TICKS_PER_SEC);
-  dtr = 0;
+	uint8_t status;
+
+	dtr = 0;
 
   //lidar.getHealth(deviceHealthInfo);
   //pc.printf("hello");
@@ -122,20 +153,28 @@ static void appTaskLidar(void *pdata) {
   //pc.printf(deviceHealthInfo.error_code + "\n");
 
   /* Task main loop */
-  
-  saveReadings();
-  while (true) {
-    lidar.waitPoint();
-    measurement = lidar.getCurrentPoint();
-    pc.printf("ANGLE: ");
-    pc.printf("%f \n", measurement.angle);
-    pc.printf("DISTANCE: ");
-    pc.printf("%f \n", measurement.distance);
-		M1_SPD = 0.0f;
-		M2_SPD = 0.5f;
+  //beginScanning();
+  //takeReadings();
+	
+	/*for(int i = 0; i < sizeof(readingsBuffer); i++) {
+		readingsBuffer[i] = 10;
+	}
+	for(int i = 0; i < sizeof(readingsBuffer); i++) {
+			pc.printf("%d \n", readingsBuffer[i]);
+	}*/
 
-    /*
-    printf("\n");
+  while (true) {
+		pc.printf("Moving...\n ");
+		OSTimeDlyHMSM(0,0,4,0); // how long it moves for
+		pc.printf("Movement stopped.\n ");
+		status = OSSemPost(readyToScan);
+		OSSemPend(readyToScan, 0, &status);
+		OSTimeDlyHMSM(0,0,4,0);
+
+
+		//pc.printf("Scanning... ");
+		//takeReadings();
+		//OSTimeDlyHMSM(0,0,5,0); // how long it scans for
     /*goForward();
     OSTimeDlyHMSM(0,0,1,0);
     goBackward();
@@ -147,40 +186,82 @@ static void appTaskLidar(void *pdata) {
 
     //pc.putc(device.getc());
     //print_byte(device.getc());
-    OSTimeDlyHMSM(0,0,0,2);
+    
   }
+}
+
+static void appTaskScan(void *pdata) {
+	uint8_t status;
+	int dummyBuffer[100];
+
+	while(true) {
+		OSSemPend(readyToScan, 0, &status);
+		pc.printf("Scanning...\n ");
+		// could put a delay in here
+		takeReadings();
+		pc.printf("Stopping scan.\n");
+		status = OSSemPost(readyToScan);
+		OSTimeDlyHMSM(0,0,5,0);
+	}
+}
+
+static void appTaskWrite(void *pdata) {
+	uint8_t status;
+	while(true) {
+		OSSemPend(readyToWrite, 0, &status);
+		status = OSSemPost(readyToWrite);
+		OSTimeDlyHMSM(0,0,10,0);
+	}
 }
 
 
 static void beginScanning() {
+  dtr = 1;
   lidar.begin(lidar_device);
   lidar.startScan();
 }
 
-static void stopScanning() {
-
-
+static void takeReadings() {
+  
 }
 
-static void saveReadings() {
-  printf("\nWriting data to the sd card \n");
-   	FILE *fp = fopen("/sd/hello.txt", "w"); // w for write, b for binary
-  	 if (fp == NULL) {
-       pc.printf("Unable to write the file \n");
+static void writeReadings() {
+	//lidar.waitPoint();
+  //measurement = lidar.getCurrentPoint();
+  /*pc.printf("ANGLE: ");
+  pc.printf("%f \n", measurement.angle);
+  pc.printf("DISTANCE: ");
+  pc.printf("%f \n", measurement.distance);*/
+
+  //printf("\nWriting data to the sd card \n");
+  //pc.printf("takeReadings()");
+  /*FILE *fp = fopen("/sd/readings.txt", "w"); // a for append
+  if (fp == NULL) {
+        pc.printf("Unable to access/create file \n");
+  }
+	for(int i = 0; i < sizeof(readingsBuffer)/sizeof(int); i++) {
+		fprintf(fp, "I'm waiting so long... \n");
+	}*/
+	//pc.printf("I am writing data!");
+
+  //fprintf(fp, "%f, %f\n", 1.00, 1.00);
+	//fprintf(fp, "%f, %f\n", 1.00, 1.00);
+  //pc.printf("File successfully written! \n");
+	//fclose(fp);	
+
+
+  /*  // Check to make sure file has been created properly...
+    if (fp == NULL) {
+       pc.printf("Unable to access/create file \n");
    	} 	else {
-				//fprintf(fp, "00101010 00101011 11010010 11101010 00101010");
-       	fprintf(fp, "Hello world, this is a test!");
+       	fprintf(fp, "%f", measurement.angle);
        	fclose(fp);
        	pc.printf("File successfully written! \n");
-   	}
-
-  	/*printf("\nReading data from the SD card. \n");
-   	fp = fopen("/sd/hello.bin", "rb"); // r for read, b for binary
-   	if (fp != NULL) {
-       	int size = fread(buffer, sizeof(char), 1024, fp);
-       	pc.printf("Number of data read: %d, text from hello.bin file: %s \n", size, buffer);
-       	fclose(fp);
    	}*/
+}
+
+static void stopScanning() {
+  dtr = 0;
 }
 
 
