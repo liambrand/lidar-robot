@@ -54,9 +54,9 @@ static void appTaskWrite(void *pdata);
 #define MISO		PTE1
 #define	SCLK		PTE2
 #define	CS		  PTE4
-#define	DETECT	PTE6
+//#define	DETECT	PTE6
 
-SDFileSystem sd(MOSI, MISO, SCLK, PTE4, "sd");
+SDFileSystem sd(MOSI, MISO, SCLK, CS, "sd");
 
 Serial pc(USBTX, USBRX);
 BufferedSerial lidar_device(D1, D0);
@@ -73,7 +73,6 @@ OS_EVENT *readyToWrite;
 
 
 struct _rplidar_response_device_health_t deviceHealthInfo;
-struct RPLidarMeasurement measurement;
 
 /* MOTOR DRIVER SHIELD */
 DigitalOut  M1_DIR(D4);
@@ -206,8 +205,6 @@ static void appTaskMovement(void *pdata) {
 
 static void appTaskScan(void *pdata) {
 	uint8_t status;
-	// Have to half the calculated array size due to its 2 dimensional nature
-	int arraySize = (sizeof(readingsBuffer)/sizeof(float))/2;
 	
 	while(true) {
 		OSSemPend(readyToScan, 0, &status);
@@ -259,7 +256,7 @@ static void writeReadings() {
 	// Iterate through the readingsBuffer and write the angle/distance pairs
 	for(int i = 0; i < arraySize; i++) {
 		fprintf(fp, "File write test! \n");
-		fprintf(fp, "%f %f", readingsBuffer[i][0], readingsBuffer[i][0]);
+		fprintf(fp, "%f %f", readingsBuffer[i][0], readingsBuffer[i][1]);
 	}
 
 	// Close file
@@ -267,6 +264,8 @@ static void writeReadings() {
 }
 
 static void takeReadings() {
+	struct RPLidarMeasurement measurement;
+	// To prevent constantly calculating the size of the array, we store it as a local variable
 	int arraySize = (sizeof(readingsBuffer)/sizeof(float))/2;
 	for(int i = 0; i < arraySize; i++) {
 			lidar.waitPoint();
