@@ -7,6 +7,7 @@
 #include <SDFileSystem.h>
 
 #include "lidar.h"
+#include "control.h"
 
 /*
 *********************************************************************************************************
@@ -15,9 +16,7 @@
 */
 
 typedef enum {
-  MOVEMENT_PRIO = 4,
-	SCAN_PRIO,
-	WRITE_PRIO
+  ROBOT_PRIO = 4,
 } taskPriorities_t;
 
 /*
@@ -26,13 +25,9 @@ typedef enum {
 *********************************************************************************************************
 */
 
-#define  MOVEMENT_STK_SIZE              256
-#define  SCAN_STK_SIZE              		256
-#define  WRITE_STK_SIZE              		256
+#define  ROBOT_STK_SIZE              256
 
-static OS_STK movementStk[MOVEMENT_STK_SIZE];
-static OS_STK scanStk[SCAN_STK_SIZE];
-static OS_STK writeStk[WRITE_STK_SIZE];
+static OS_STK robotStk[ROBOT_STK_SIZE];
 
 /*
 *********************************************************************************************************
@@ -40,9 +35,7 @@ static OS_STK writeStk[WRITE_STK_SIZE];
 *********************************************************************************************************
 */
 
-static void appTaskMovement(void *pdata);
-static void appTaskScan(void *pdata);
-static void appTaskWrite(void *pdata);
+static void appTaskRobot(void *pdata);
 
 /*
 *********************************************************************************************************
@@ -52,6 +45,7 @@ static void appTaskWrite(void *pdata);
 
 Serial pc(USBTX, USBRX);
 Lidar lidar;
+Control control;
 
 /*
 *********************************************************************************************************
@@ -65,20 +59,10 @@ int main() {
   OSInit();                                                   
 
   /* Create the tasks */
-  OSTaskCreate(appTaskMovement,                               
+  OSTaskCreate(appTaskRobot,                               
                (void *)0,
-               (OS_STK *)&movementStk[MOVEMENT_STK_SIZE - 1],
-               MOVEMENT_PRIO);
-
-  OSTaskCreate(appTaskScan,                               
-               (void *)0,
-               (OS_STK *)&scanStk[SCAN_STK_SIZE - 1],
-               SCAN_PRIO);
-
-	OSTaskCreate(appTaskWrite,                               
-               (void *)0,
-               (OS_STK *)&writeStk[WRITE_STK_SIZE - 1],
-               WRITE_PRIO);
+               (OS_STK *)&robotStk[ROBOT_STK_SIZE - 1],
+               ROBOT_PRIO);
 
   /* Start the OS */
   OSStart();                                                  
@@ -93,7 +77,7 @@ int main() {
 *********************************************************************************************************
 */
 
-static void appTaskMovement(void *pdata) {
+static void appTaskRobot(void *pdata) {
   /* Start the OS ticker -- must be done in the highest priority task */
   SysTick_Config(SystemCoreClock / OS_TICKS_PER_SEC);
 
@@ -102,22 +86,5 @@ static void appTaskMovement(void *pdata) {
 		OSTimeDlyHMSM(0,0,1,0);
     
   }
-}
-
-static void appTaskScan(void *pdata) {
-	
-  //while(true) {
-	//	
-	//	OSTimeDlyHMSM(0,0,0,4);
-	//}
-}
-
-static void appTaskWrite(void *pdata) {
-	
-
-	//while(true) {
-	//	
-	//	OSTimeDlyHMSM(0,0,0,5);
-	//}
 }
 
