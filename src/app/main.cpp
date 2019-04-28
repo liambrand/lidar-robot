@@ -80,10 +80,30 @@ int main() {
 static void appTaskRobot(void *pdata) {
   /* Start the OS ticker -- must be done in the highest priority task */
   SysTick_Config(SystemCoreClock / OS_TICKS_PER_SEC);
+  
+  // Random number between 0 and 3
 
   while (true) {
-		pc.printf("hey");
-		OSTimeDlyHMSM(0,0,1,0);
+		int r = rand() % 4;
+		
+		if(r == 0) {
+		  pc.printf("Forward");
+		  goForward();
+		}
+		if(r == 1) {
+		  pc.printf("Right");
+		  goRight();
+		}
+		if(r == 2) {
+		  pc.printf("Back");
+		  goBackward();
+		}
+		if(r == 3) {
+		  pc.printf("Left");
+		  goLeft();
+		}
+		
+		OSTimeDlyHMSM(0,0,3,0);
     
   }
 }
