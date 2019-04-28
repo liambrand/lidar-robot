@@ -27,6 +27,6 @@ void writeReadings(float angles[], float distances[]) {
 	}
 
 	// Close file
-fclose(fp);
+  fclose(fp);
 }
 
