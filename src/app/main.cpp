@@ -82,7 +82,7 @@ static void appTaskRobot(void *pdata) {
   SysTick_Config(SystemCoreClock / OS_TICKS_PER_SEC);
 
   while (true) {
-		pc.printf("hey");
+		zpc.printf("hey");
 		OSTimeDlyHMSM(0,0,1,0);
     
   }

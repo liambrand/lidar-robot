@@ -11,7 +11,7 @@ FileWriter::FileWriter() {
 }
 
 void writeReadings(float angles[], float distances[]) {
-  int arraySize = sizeof(readingsBuffer)/sizeof(float);
+  int arraySize = sizeof(z)/sizeof(float);
   
 	// Create the readings file on the Micro SD-Card
 	FILE *fp = fopen("/sd/readings.txt", "w");
