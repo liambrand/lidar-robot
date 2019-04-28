@@ -15,7 +15,7 @@
 */
 
 typedef enum {
-  MOVEMENT_PRIO = 4,
+	MOVEMENT_PRIO = 4,
 	SCAN_PRIO,
 	WRITE_PRIO
 } taskPriorities_t;
@@ -27,8 +27,8 @@ typedef enum {
 */
 
 #define  MOVEMENT_STK_SIZE              256
-#define  SCAN_STK_SIZE              		256
-#define  WRITE_STK_SIZE              		256
+#define  SCAN_STK_SIZE              	256
+#define  WRITE_STK_SIZE              	256
 
 static OS_STK movementStk[MOVEMENT_STK_SIZE];
 static OS_STK scanStk[SCAN_STK_SIZE];
@@ -50,12 +50,15 @@ static void appTaskWrite(void *pdata);
 *********************************************************************************************************
 */
 
+/* Serial for terminal output */
+Serial pc(USBTX, USBRX);
+
+/* File System Variables */
 #define MOSI		PTE3
 #define MISO		PTE1
 #define	SCLK		PTE2
-#define	CS		  PTE4
-
-Serial pc(USBTX, USBRX);
+#define	CS		  	PTE4
+SDFileSystem sd(MOSI, MISO, SCLK, CS, "sd");
 
 /* LIDAR Variables */
 BufferedSerial lidar_device(D1, D0);
@@ -63,7 +66,7 @@ RPLidar lidar;
 DigitalOut dtr(D7);
 DigitalOut redLed(LED1);
 
-/* MOTOR DRIVER SHIELD */
+/* Motor Driver Shield */
 DigitalOut  M1_DIR(D4);
 PwmOut      M1_SPD(D3);
 
@@ -73,14 +76,12 @@ PwmOut      M2_SPD(D11);
 DigitalOut  M3_DIR(D8);
 PwmOut      M3_SPD(D5);
 
+/* Buffer */
 float readingsBuffer[16000][2];
-SDFileSystem sd(MOSI, MISO, SCLK, CS, "sd");
 
 // Semaphores
 OS_EVENT *readyToScan;
 OS_EVENT *readyToWrite;
-
-struct _rplidar_response_device_health_t deviceHealthInfo;
 
 /* Scanning methods */
 static void beginScanning(void);
@@ -105,7 +106,7 @@ int main() {
   /* Initialise the OS */
   OSInit();                                                   
 
-	/* Declare binary semaphores */
+	/* Declare semaphores */
 	readyToScan = OSSemCreate(0);
 	readyToWrite = OSSemCreate(0);
 
@@ -143,9 +144,10 @@ static void appTaskMovement(void *pdata) {
   SysTick_Config(SystemCoreClock / OS_TICKS_PER_SEC);
 	uint8_t status;
 
+	// Initialize LIDAR
 	dtr = 0;
 	lidar.begin(lidar_device);
-  lidar.startScan();
+	lidar.startScan();
 
   while (true) {
 		// Movement session
@@ -162,6 +164,7 @@ static void appTaskMovement(void *pdata) {
   }
 }
 
+
 static void appTaskScan(void *pdata) {
 	uint8_t status;
 	
@@ -176,6 +179,7 @@ static void appTaskScan(void *pdata) {
 		OSTimeDlyHMSM(0,0,0,4);
 	}
 }
+
 
 static void appTaskWrite(void *pdata) {
 	uint8_t status;
@@ -193,13 +197,14 @@ static void appTaskWrite(void *pdata) {
 	}
 }
 
+
 static void beginScanning() {
   dtr = 1;
 }
 
+
 /**
 *	Write the stored LIDAR readings to the Micro-SD Card
-*
 */
 static void writeReadings() {
 	int arraySize = (sizeof(readingsBuffer)/sizeof(float))/2;
@@ -207,10 +212,10 @@ static void writeReadings() {
 	// Create the readings file on the Micro SD-Card
 	FILE *fp = fopen("/sd/readings.txt", "w");
 
-	// Error checking
-  if (fp == NULL) {
-    pc.printf("Unable to access/create file \n");
-  }
+	// Log if the file cannot be made
+	if (fp == NULL) {
+		pc.printf("Unable to access/create file \n");
+	}
 
 	// Iterate through the readingsBuffer and write the angle/distance pairs
 	for(int i = 0; i < arraySize; i++) {
@@ -221,6 +226,9 @@ static void writeReadings() {
 	fclose(fp);
 }
 
+/*
+*	Begin storing readings in the program's buffer
+*/
 static void takeReadings() {
 	struct RPLidarMeasurement measurement;
 	// To prevent constantly calculating the size of the array, we store it as a local variable
@@ -236,9 +244,17 @@ static void takeReadings() {
 	}
 }
 
+/*
+*	Set the DTR to LOW
+*/
 static void stopScanning() {
   dtr = 0;
 }
+
+
+/*
+*	Hardcoded directional drive
+*/
 
 static void goForward() {
   pc.printf("goForward");
