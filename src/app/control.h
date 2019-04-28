@@ -14,11 +14,9 @@ extern PwmOut      M2_SPD;
 extern DigitalOut  M3_DIR;
 extern PwmOut      M3_SPD;
 
-class Control{
-  public:
-    Control();
-    
+class Control{   
     public:
+      Control();
       void drive(int angle, int speed);
       void stop(void);
       

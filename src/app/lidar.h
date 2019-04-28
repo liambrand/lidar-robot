@@ -4,12 +4,14 @@
 #include <mbed.h>
 #include <rplidar.h>
 #include <BufferedSerial.h>
+#include "filewriter.h"
 
 /* LIDAR Variables */
 //extern Serial pc(USBTX, USBRX);
 extern BufferedSerial lidar_device;
 extern RPLidar rplidar;
 extern DigitalOut dtr;
+extern FileWriter filewriter;
 
 class Lidar{
   public:

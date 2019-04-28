@@ -3,6 +3,7 @@
 DigitalOut dtr(D7);
 RPLidar rplidar;
 BufferedSerial lidar_device(D1, D0, 115200);
+FileWriter filewriter;
 
 Lidar::Lidar() {
 	dtr = 0;
