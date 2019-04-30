@@ -1,2 +1,2 @@
 # lidar-robot
-LIDAR Robot software.
+Software for the operation of the LIDAR robot.
